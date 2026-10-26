@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Pipeline Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-lg">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold text-white tracking-tight">RAG Pipeline Studio</h1>
+          <p class="text-xs text-slate-400">Powered by <span class="text-cyan-400 font-medium">Groq</span> &middot; <span class="text-indigo-400 font-medium">openai/gpt-oss-20b</span></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <span id="health-badge" class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Vector DB Active
+        </span>
+        <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition font-medium flex items-center gap-1.5 border border-slate-700">
+          <i class="fa-solid fa-code"></i> Swagger API
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+
+    <!-- Left Column: Document Management (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-6">
+      
+      <!-- Ingestion Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> Ingest Document
+          </h2>
+          <span class="text-xs text-slate-400">PDF Only</span>
+        </div>
+
+        <form id="upload-form" class="space-y-4">
+          <div id="drop-area" class="border-2 border-dashed border-slate-700 hover:border-cyan-500/50 rounded-xl p-6 text-center cursor-pointer transition bg-slate-950/40">
+            <input type="file" id="file-input" accept=".pdf" class="hidden">
+            <i class="fa-solid fa-file-pdf text-3xl text-slate-500 mb-2"></i>
+            <p id="file-label" class="text-xs text-slate-300 font-medium">Click or drag & drop PDF here</p>
+            <p class="text-[11px] text-slate-500 mt-1">Chunk size: 1000 &middot; Overlap: 200</p>
+          </div>
+
+          <button type="submit" id="upload-btn" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <i class="fa-solid fa-upload"></i> Process & Index PDF
+          </button>
+        </form>
+
+        <div id="upload-status" class="mt-3 text-xs hidden"></div>
+      </div>
+
+      <!-- Ingested Documents List -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-1 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-database text-indigo-400"></i> Indexed Files
+          </h2>
+          <button id="refresh-docs-btn" class="text-xs text-slate-400 hover:text-slate-200 transition">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+        </div>
+
+        <div id="docs-list" class="space-y-2.5 flex-1 overflow-y-auto max-h-64 pr-1">
+          <p class="text-xs text-slate-500 italic">Loading indexed documents...</p>
+        </div>
+      </div>
+
+      <!-- Terminal Tip -->
+      <div class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 space-y-2">
+        <p class="font-medium text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-terminal text-emerald-400"></i> Terminal CLI Available
+        </p>
+        <p>You can also query and benchmark directly from your terminal:</p>
+        <div class="bg-slate-950 p-2 rounded border border-slate-800 text-[11px] text-cyan-300">
+          <code>python cli.py</code>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Query & Response (8 cols) -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Query Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> Ask Grounded Question
+          </h2>
+          <span class="text-xs text-slate-400">Strict Context Citations</span>
+        </div>
+
+        <form id="query-form" class="space-y-3">
+          <div class="relative">
+            <textarea id="question-input" rows="3" placeholder="e.g., What is the termination clause in this contract?" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition resize-none"></textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span>Suggestions:</span>
+              <button type="button" class="suggestion-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Termination Clause</button>
+              <button type="button" class="suggestion-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Payment Terms</button>
+            </div>
+
+            <button type="submit" id="ask-btn" class="py-2 px-5 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md transition disabled:opacity-50 flex items-center gap-2">
+              <i class="fa-solid fa-paper-plane"></i> Ask Query
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Result Card -->
+      <div id="result-container" class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex-1 flex flex-col hidden">
+        
+        <!-- Answer Header & Badges -->
+        <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-800 gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-slate-200">Grounded Answer</span>
+            <span id="cache-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase"></span>
+          </div>
+
+          <!-- Latency Metrics -->
+          <div class="flex items-center gap-3 text-xs">
+            <div class="flex items-center gap-1.5 text-slate-400">
+              <i class="fa-solid fa-bolt text-amber-400"></i>
+              <span>Retrieval: <strong id="metric-retrieval" class="text-slate-200">0 ms</strong></span>
+            </div>
+            <span class="text-slate-700">&bull;</span>
+            <div class="flex items-center gap-1.5 text-slate-400">
+              <i class="fa-solid fa-microchip text-indigo-400"></i>
+              <span>Generation: <strong id="metric-generation" class="text-slate-200">0 ms</strong></span>
+            </div>
+            <span class="text-slate-700">&bull;</span>
+            <div class="flex items-center gap-1.5 text-slate-400">
+              <i class="fa-solid fa-clock text-cyan-400"></i>
+              <span>Total: <strong id="metric-total" class="text-slate-200">0 ms</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Answer Text -->
+        <div id="answer-text" class="text-sm leading-relaxed text-slate-200 whitespace-pre-wrap bg-slate-950/40 p-4 rounded-lg border border-slate-800/80 mb-6"></div>
+
+        <!-- Source Chunks -->
+        <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-quote-left text-cyan-400"></i> Retrieved Grounding Context (<span id="source-count">0</span> chunks)
+          </h3>
+          <div id="sources-list" class="space-y-3"></div>
+        </div>
+
+      </div>
+
+      <!-- Placeholder Empty State -->
+      <div id="empty-state" class="bg-slate-900/40 border border-slate-800 border-dashed rounded-xl p-12 text-center flex-1 flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-2xl mb-3">
+          <i class="fa-solid fa-comments"></i>
+        </div>
+        <h3 class="text-sm font-medium text-slate-300">No Query Submitted Yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mt-1">Ingest a PDF on the left or use the sample contract, then submit a question to see grounded responses and cache latency.</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
+    RAG Pipeline &middot; FastAPI &middot; ChromaDB &middot; Sentence-Transformers &middot; Groq (openai/gpt-oss-20b)
+  </footer>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const dropArea = document.getElementById('drop-area');
+    const fileLabel = document.getElementById('file-label');
+    const uploadForm = document.getElementById('upload-form');
+    const uploadBtn = document.getElementById('upload-btn');
+    const uploadStatus = document.getElementById('upload-status');
+    const docsList = document.getElementById('docs-list');
+    const refreshDocsBtn = document.getElementById('refresh-docs-btn');
+
+    const queryForm = document.getElementById('query-form');
+    const questionInput = document.getElementById('question-input');
+    const askBtn = document.getElementById('ask-btn');
+    const resultContainer = document.getElementById('result-container');
+    const emptyState = document.getElementById('empty-state');
+    const answerText = document.getElementById('answer-text');
+    const cacheBadge = document.getElementById('cache-badge');
+    const metricRetrieval = document.getElementById('metric-retrieval');
+    const metricGeneration = document.getElementById('metric-generation');
+    const metricTotal = document.getElementById('metric-total');
+    const sourceCount = document.getElementById('source-count');
+    const sourcesList = document.getElementById('sources-list');
+
+    // Drag and Drop
+    dropArea.addEventListener('click', () => fileInput.click());
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('border-cyan-500'); });
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('border-cyan-500'));
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.classList.remove('border-cyan-500');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        updateFileLabel();
+      }
+    });
+
+    fileInput.addEventListener('change', updateFileLabel);
+
+    function updateFileLabel() {
+      if (fileInput.files.length) {
+        fileLabel.textContent = fileInput.files[0].name;
+      }
+    }
+
+    // Ingest Handler
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!fileInput.files.length) {
+        alert('Please select a PDF file first.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Indexing...';
+      uploadStatus.classList.remove('hidden');
+      uploadStatus.className = 'mt-3 text-xs text-amber-400';
+      uploadStatus.textContent = 'Parsing and indexing into ChromaDB...';
+
+      try {
+        const res = await fetch('/ingest', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          uploadStatus.className = 'mt-3 text-xs text-emerald-400';
+          uploadStatus.textContent = `✓ Ingested: ${data.chunks_created} chunks (${data.total_pages} pages)`;
+          fileInput.value = '';
+          fileLabel.textContent = 'Click or drag & drop PDF here';
+          loadDocuments();
+        } else {
+          uploadStatus.className = 'mt-3 text-xs text-rose-400';
+          uploadStatus.textContent = 'Error: ' + (data.detail || 'Upload failed');
+        }
+      } catch (err) {
+        uploadStatus.className = 'mt-3 text-xs text-rose-400';
+        uploadStatus.textContent = 'Network error: ' + err.message;
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fa-solid fa-upload"></i> Process & Index PDF';
+      }
+    });
+
+    // Query Handler
+    queryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      askBtn.disabled = true;
+      askBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+      try {
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Query error: ' + (data.detail || 'Failed to process question'));
+          return;
+        }
+
+        renderResult(data);
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      } finally {
+        askBtn.disabled = false;
+        askBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Ask Query';
+      }
+    });
+
+    function renderResult(data) {
+      emptyState.classList.add('hidden');
+      resultContainer.classList.remove('hidden');
+
+      answerText.textContent = data.answer;
+
+      if (data.cache_hit) {
+        cacheBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        cacheBadge.textContent = 'CACHE HIT';
+      } else {
+        cacheBadge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide bg-amber-500/20 text-amber-400 border border-amber-500/30';
+        cacheBadge.textContent = 'CACHE MISS';
+      }
+
+      metricRetrieval.textContent = `${data.retrieval_ms} ms`;
+      metricGeneration.textContent = `${data.generation_ms} ms`;
+      const total = (parseFloat(data.retrieval_ms) + parseFloat(data.generation_ms)).toFixed(2);
+      metricTotal.textContent = `${total} ms`;
+
+      sourceCount.textContent = data.sources.length;
+      sourcesList.innerHTML = '';
+
+      if (!data.sources.length) {
+        sourcesList.innerHTML = '<p class="text-xs text-slate-500 italic">No context chunks retrieved.</p>';
+        return;
+      }
+
+      data.sources.forEach((src, idx) => {
+        const div = document.createElement('div');
+        div.className = 'bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-1.5';
+        div.innerHTML = `
+          <div class="flex items-center justify-between font-medium">
+            <span class="text-cyan-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-file-lines"></i> ${src.file_name} &middot; Page ${src.page}
+            </span>
+            ${src.score !== null ? `<span class="text-slate-500 text-[11px]">Score: ${src.score}</span>` : ''}
+          </div>
+          <p class="text-slate-300 leading-relaxed font-mono text-[11px] bg-slate-900/60 p-2 rounded border border-slate-800/60">${src.content}</p>
+        `;
+        sourcesList.appendChild(div);
+      });
+    }
+
+    // Suggestions
+    document.querySelectorAll('.suggestion-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.textContent.includes('Termination')) {
+          questionInput.value = 'What is the termination clause in this contract?';
+        } else if (btn.textContent.includes('Payment')) {
+          questionInput.value = 'What are the payment terms and late fees?';
+        }
+      });
+    });
+
+    // Load Ingested Documents
+    async function loadDocuments() {
+      try {
+        const res = await fetch('/documents');
+        const data = await res.json();
+        docsList.innerHTML = '';
+
+        if (!data.documents || !data.documents.length) {
+          docsList.innerHTML = '<p class="text-xs text-slate-500 italic">No documents indexed yet.</p>';
+          return;
+        }
+
+        data.documents.forEach(doc => {
+          const item = document.createElement('div');
+          item.className = 'flex items-center justify-between p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-xs';
+          item.innerHTML = `
+            <div class="truncate mr-2">
+              <p class="font-medium text-slate-200 truncate">${doc.filename}</p>
+              <p class="text-[11px] text-slate-500">${doc.chunk_count} chunk(s)</p>
+            </div>
+            <button onclick="deleteDoc('${doc.filename}')" class="text-slate-500 hover:text-rose-400 transition p-1">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          `;
+          docsList.appendChild(item);
+        });
+      } catch (e) {
+        docsList.innerHTML = '<p class="text-xs text-rose-400">Failed to load documents.</p>';
+      }
+    }
+
+    window.deleteDoc = async function(filename) {
+      if (!confirm(`Delete all indexed chunks for "${filename}"?`)) return;
+      try {
+        const res = await fetch(`/documents/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+        if (res.ok) {
+          loadDocuments();
+        } else {
+          alert('Failed to delete document');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    };
+
+    refreshDocsBtn.addEventListener('click', loadDocuments);
+    loadDocuments();
+  </script>
+</body>
+</html>

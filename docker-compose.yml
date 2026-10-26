@@ -1,0 +1,16 @@
+services:
+  rag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-pipeline-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma
+      - UPLOAD_DIR=/app/data/uploads
+    restart: unless-stopped

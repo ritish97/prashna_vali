@@ -1,0 +1,30 @@
+# ==============================================================
+# Render.com Blueprint Configuration for RAG Pipeline Studio
+# Docs: https://render.com/docs/blueprint-spec
+# ==============================================================
+
+services:
+  - type: web
+    name: rag-pipeline-studio
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true --server.enableCORS false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false  # You will be prompted to enter this in Render Dashboard
+      - key: LLM_MODEL
+        value: openai/gpt-oss-20b
+      - key: REASONING_EFFORT
+        value: medium
+      - key: CHROMA_PERSIST_DIRECTORY
+        value: ./data/chroma
+      - key: UPLOAD_DIR
+        value: ./data/uploads
+      - key: CACHE_SIZE
+        value: 512
+      - key: TOP_K
+        value: 4
