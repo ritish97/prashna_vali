@@ -44,11 +44,22 @@ def get_vectorstore():
     return _vectorstore
 
 
+def get_chroma_client():
+    """Get persistent ChromaDB client directly without embedding model."""
+    import chromadb
+    return chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIRECTORY)
+
+
 def list_ingested_documents() -> List[Dict[str, Any]]:
-    """List all ingested documents and their chunk counts."""
+    """List all ingested documents and their chunk counts without loading embeddings."""
     try:
-        vs = get_vectorstore()
-        data = vs._collection.get(include=["metadatas"])
+        client = get_chroma_client()
+        try:
+            coll = client.get_collection(name=settings.COLLECTION_NAME)
+        except Exception:
+            return []
+
+        data = coll.get(include=["metadatas"])
         metadatas = data.get("metadatas", [])
         if not metadatas:
             return []
@@ -68,13 +79,14 @@ def list_ingested_documents() -> List[Dict[str, Any]]:
 
 
 def delete_document_by_name(filename: str) -> int:
-    """Delete all chunks belonging to a specific document."""
+    """Delete all chunks belonging to a specific document without loading embeddings."""
     try:
-        vs = get_vectorstore()
-        data = vs._collection.get(where={"source": filename})
+        client = get_chroma_client()
+        coll = client.get_collection(name=settings.COLLECTION_NAME)
+        data = coll.get(where={"source": filename})
         ids = data.get("ids", [])
         if ids:
-            vs._collection.delete(ids=ids)
+            coll.delete(ids=ids)
             return len(ids)
         return 0
     except Exception as e:

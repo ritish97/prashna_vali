@@ -154,8 +154,15 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📂 Document Ingestion")
 
-    # Fast Sample Contract Button
+    # Fast Sample Contract Button (auto-generate if missing)
     sample_pdf_path = ROOT_DIR / "sample_contract.pdf"
+    if not sample_pdf_path.exists():
+        try:
+            from scripts.generate_sample_pdf import generate_sample_pdf
+            generate_sample_pdf(str(sample_pdf_path))
+        except Exception:
+            pass
+
     if sample_pdf_path.exists():
         if st.button("📄 Load Sample Contract", use_container_width=True):
             with st.spinner("Indexing sample_contract.pdf..."):
@@ -236,6 +243,13 @@ with tab_chat:
     with col_p3:
         if st.button("🔒 What are the data protection requirements?"):
             preset_q = "What are the data confidentiality and encryption requirements?"
+
+    # Initial guidance if no messages yet
+    if not st.session_state.messages:
+        if not docs:
+            st.info("👋 **Welcome to Prashnavali!** No documents are indexed yet.\n\nClick **'📄 Load Sample Contract'** in the sidebar (or upload any PDF) to get started immediately.")
+        else:
+            st.info(f"📚 **{len(docs)} document(s) indexed and ready.** Use the suggestion buttons above or type a question in the chat bar below.")
 
     # Render Chat History
     for msg in st.session_state.messages:

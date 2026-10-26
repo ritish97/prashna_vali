@@ -25,6 +25,7 @@ wheels/
 # Data & Persistence
 data/
 *.pdf
+!sample_contract.pdf
 .chroma/
 
 # Environment
