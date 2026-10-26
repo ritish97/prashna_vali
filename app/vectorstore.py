@@ -82,7 +82,12 @@ def delete_document_by_name(filename: str) -> int:
     """Delete all chunks belonging to a specific document without loading embeddings."""
     try:
         client = get_chroma_client()
-        coll = client.get_collection(name=settings.COLLECTION_NAME)
+        try:
+            coll = client.get_collection(name=settings.COLLECTION_NAME)
+        except Exception:
+            # Collection does not exist yet on a fresh server, nothing to delete
+            return 0
+
         data = coll.get(where={"source": filename})
         ids = data.get("ids", [])
         if ids:
@@ -91,4 +96,4 @@ def delete_document_by_name(filename: str) -> int:
         return 0
     except Exception as e:
         logger.error(f"Error deleting document {filename}: {e}")
-        raise
+        return 0
