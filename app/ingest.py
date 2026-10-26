@@ -41,6 +41,10 @@ def ingest_pdf(file_path: str, original_filename: str) -> Tuple[int, int]:
     chunks = splitter.split_documents(documents)
 
     if chunks:
+        from app.vectorstore import delete_document_by_name
+        # Remove older chunks of the same file to prevent duplicate bloat
+        delete_document_by_name(original_filename)
+
         vectorstore = get_vectorstore()
         vectorstore.add_documents(chunks)
         logger.info(

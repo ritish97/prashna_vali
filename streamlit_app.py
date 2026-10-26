@@ -168,8 +168,11 @@ with st.sidebar:
             with st.spinner("Indexing sample_contract.pdf..."):
                 try:
                     chunks, pages = ingest_pdf(str(sample_pdf_path), "sample_contract.pdf")
-                    st.success(f"✓ Indexed {chunks} chunks across {pages} page(s)!")
-                    st.rerun()
+                    if chunks > 0:
+                        st.toast(f"✓ Sample contract indexed ({chunks} chunks)!", icon="✅")
+                        st.success(f"✓ Indexed {chunks} chunk(s) across {pages} page(s)!")
+                    else:
+                        st.warning("⚠️ Document yielded 0 text chunks.")
                 except Exception as ex:
                     st.error(f"Failed to index: {ex}")
 
@@ -177,7 +180,7 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Upload PDF Document", type=["pdf"])
     if uploaded_file is not None:
         if st.button("⬆️ Ingest Uploaded PDF", use_container_width=True):
-            with st.spinner(f"Processing '{uploaded_file.name}'..."):
+            with st.spinner(f"Processing and indexing '{uploaded_file.name}'..."):
                 upload_dir = Path(settings.UPLOAD_DIR)
                 upload_dir.mkdir(parents=True, exist_ok=True)
                 save_dest = upload_dir / uploaded_file.name
@@ -187,8 +190,11 @@ with st.sidebar:
 
                 try:
                     chunks, pages = ingest_pdf(str(save_dest), uploaded_file.name)
-                    st.success(f"✓ Ingested {chunks} chunks across {pages} page(s)!")
-                    st.rerun()
+                    if chunks > 0:
+                        st.toast(f"✓ '{uploaded_file.name}' indexed ({chunks} chunks)!", icon="✅")
+                        st.success(f"✓ Successfully indexed {chunks} chunk(s) across {pages} page(s)!")
+                    else:
+                        st.error(f"⚠️ '{uploaded_file.name}' has {pages} page(s) but no readable text was extracted. If it is a scanned image, please upload a text-based PDF.")
                 except Exception as ex:
                     st.error(f"Ingestion failed: {ex}")
 
